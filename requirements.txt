@@ -1,0 +1,11 @@
+numpy
+pandas
+matplotlib
+seaborn
+nltk
+wordcloud
+scikit-learn
+joblib
+streamlit
+SpeechRecognition
+pyaudio
