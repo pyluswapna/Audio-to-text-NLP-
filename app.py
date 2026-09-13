@@ -114,21 +114,8 @@ st.markdown('<div class="main-title">🐦 Twitter Voice Sentiment</div>', unsafe
 st.markdown('<div class="subtitle">Convert speech to text and detect Hate Speech & Sentiment using your Custom ML Model 🤖</div>', unsafe_allow_html=True)
 
 # =====================================================
-# LOAD CUSTOM MODEL & CLEANING FUNCTION
+# TWEET CLEANING FUNCTION (Must be declared before loading/training)
 # =====================================================
-@st.cache_resource
-def load_artifacts():
-    try:
-        model = joblib.load("twitter_sentiment_model.pkl")
-        vectorizer = joblib.load("tfidf_vectorizer.pkl")
-        return model, vectorizer
-    except FileNotFoundError:
-        st.error("Model files not found! Please ensure 'twitter_sentiment_model.pkl' and 'tfidf_vectorizer.pkl' are in your repository.")
-        st.stop()
-
-with st.spinner("🤖 Loading Custom Twitter Model..."):
-    model, vectorizer = load_artifacts()
-
 def clean_tweet(text):
     if not isinstance(text, str):
         return ""
@@ -141,6 +128,57 @@ def clean_tweet(text):
     tokens = word_tokenize(text)
     clean_tokens = [lemmatizer.lemmatize(word) for word in tokens if word not in stop_words and len(word) > 2]
     return " ".join(clean_tokens)
+
+# =====================================================
+# LOAD OR AUTO-TRAIN MODEL & VECTORIZER
+# =====================================================
+@st.cache_resource
+def load_or_train_artifacts():
+    model_path = "twitter_sentiment_model.pkl"
+    vectorizer_path = "tfidf_vectorizer.pkl"
+    
+    # 1. Try loading existing local files if valid
+    if os.path.exists(model_path) and os.path.exists(vectorizer_path):
+        try:
+            model = joblib.load(model_path)
+            vectorizer = joblib.load(vectorizer_path)
+            return model, vectorizer
+        except Exception:
+            pass  # Fallback to auto-training if LFS pointer or corruption occurs
+            
+    # 2. Auto-train dynamically using twitter.csv on startup[cite: 3]
+    try:
+        df = pd.read_csv("twitter.csv")
+    except Exception as e:
+        st.error(f"Error loading 'twitter.csv': {e}")
+        st.stop()
+        
+    df["clean_tweet"] = df["tweet"].apply(clean_tweet)
+    
+    X = df["clean_tweet"]
+    y = df["label"]
+    
+    vectorizer = TfidfVectorizer(
+        max_features=10000,
+        ngram_range=(1, 2),
+        sublinear_tf=True
+    )
+    X_train_vec = vectorizer.fit_transform(X)
+    
+    model = LogisticRegression(class_weight="balanced", max_iter=1000, random_state=42)
+    model.fit(X_train_vec, y)
+    
+    # Save locally for faster future caching
+    try:
+        joblib.dump(model, model_path)
+        joblib.dump(vectorizer, vectorizer_path)
+    except Exception:
+        pass
+        
+    return model, vectorizer
+
+with st.spinner("🤖 Initializing Twitter Model..."):
+    model, vectorizer = load_or_train_artifacts()
 
 # =====================================================
 # SENTIMENT DISPLAY FUNCTION
