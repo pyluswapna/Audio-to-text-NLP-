@@ -22,9 +22,10 @@ st.set_page_config(
 )
 
 # =====================================================
-# SETUP & NLTK DOWNLOADS
+# SETUP & NLTK DOWNLOADS (Added punkt_tab fix)
 # =====================================================
 nltk.download("punkt", quiet=True)
+nltk.download("punkt_tab", quiet=True)
 nltk.download("stopwords", quiet=True)
 nltk.download("wordnet", quiet=True)
 nltk.download("omw-1.4", quiet=True)
@@ -114,7 +115,7 @@ st.markdown('<div class="main-title">🐦 Twitter Voice Sentiment</div>', unsafe
 st.markdown('<div class="subtitle">Convert speech to text and detect Hate Speech & Sentiment using your Custom ML Model 🤖</div>', unsafe_allow_html=True)
 
 # =====================================================
-# TWEET CLEANING FUNCTION (Must be declared before loading/training)
+# TWEET CLEANING FUNCTION
 # =====================================================
 def clean_tweet(text):
     if not isinstance(text, str):
@@ -137,16 +138,14 @@ def load_or_train_artifacts():
     model_path = "twitter_sentiment_model.pkl"
     vectorizer_path = "tfidf_vectorizer.pkl"
     
-    # 1. Try loading existing local files if valid
     if os.path.exists(model_path) and os.path.exists(vectorizer_path):
         try:
             model = joblib.load(model_path)
             vectorizer = joblib.load(vectorizer_path)
             return model, vectorizer
         except Exception:
-            pass  # Fallback to auto-training if LFS pointer or corruption occurs
+            pass
             
-    # 2. Auto-train dynamically using twitter.csv on startup[cite: 3]
     try:
         df = pd.read_csv("twitter.csv")
     except Exception as e:
@@ -168,7 +167,6 @@ def load_or_train_artifacts():
     model = LogisticRegression(class_weight="balanced", max_iter=1000, random_state=42)
     model.fit(X_train_vec, y)
     
-    # Save locally for faster future caching
     try:
         joblib.dump(model, model_path)
         joblib.dump(vectorizer, vectorizer_path)
