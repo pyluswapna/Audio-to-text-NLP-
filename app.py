@@ -8,43 +8,9 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-
-import os
-import pickle
 import pandas as pd
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression  # Or whichever model you used
-
-@st.cache_resource
-def load_or_train_models():
-    model_path = "twitter_sentiment_model.pkl"
-    vectorizer_path = "tfidf_vectorizer.pkl"
-    
-    # If model files already exist, load them normally
-    if os.path.exists(model_path) and os.path.exists(vectorizer_path):
-        with open(model_path, "rb") as f:
-            model = pickle.load(f)
-        with open(vectorizer_path, "rb") as f:
-            vectorizer = pickle.load(f)
-        return model, vectorizer
-    
-    # Otherwise, train them automatically from twitter.csv on the fly!
-    df = pd.read_csv("twitter.csv")
-    # (Insert your preprocessing and training columns here matching your Jupyter notebook)
-    # Example placeholder:
-    # X = df['text_column']
-    # y = df['sentiment_column']
-    # vectorizer = TfidfVectorizer()
-    # X_vec = vectorizer.fit_transform(X)
-    # model = LogisticRegression()
-    # model.fit(X_vec, y)
-    
-    return model, vectorizer
-
-model, vectorizer = load_or_train_models()
-
-
-
+from sklearn.linear_model import LogisticRegression
 
 # =====================================================
 # PAGE CONFIGURATION
@@ -69,129 +35,77 @@ stop_words.discard("not")
 stop_words.discard("no")
 
 # =====================================================
-# CUSTOM CSS (Cleaned up to fix text color & empty boxes)
+# CUSTOM CSS
 # =====================================================
-
-import streamlit as st
-
 st.markdown("""
     <style>
-    /* Force radio button text, general labels, and standard text to be white */
+    /* Force text and labels to be white */
     label, p, div[role="radiogroup"] label p {
         color: white !important;
     }
-    
-    /* Ensure the text typed inside the white text area remains black */
     .stTextArea textarea {
         color: black !important;
     }
+    .stApp {
+        background:
+            radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.35), transparent 30%),
+            radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.30), transparent 30%),
+            linear-gradient(135deg, #0f172a, #1e1b4b, #111827);
+        color: white;
+    }
+    .block-container {
+        max-width: 900px;
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+    }
+    .main-title {
+        text-align: center;
+        font-size: 48px;
+        font-weight: 800;
+        background: linear-gradient(90deg, #60a5fa, #c084fc, #f472b6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 5px;
+    }
+    .subtitle {
+        text-align: center;
+        font-size: 18px;
+        color: #cbd5e1;
+        margin-bottom: 30px;
+    }
+    .result-box {
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 18px;
+        padding: 20px;
+        margin-top: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .positive {
+        color: #4ade80;
+        font-size: 30px;
+        font-weight: 800;
+    }
+    .negative {
+        color: #fb7185;
+        font-size: 30px;
+        font-weight: 800;
+    }
+    .footer {
+        text-align: center;
+        color: #94a3b8;
+        margin-top: 40px;
+        font-size: 14px;
+    }
+    .stTextArea textarea, .stTextInput input {
+        color: #000000 !important;
+        background-color: #ffffff !important;
+        font-size: 16px !important;
+    }
+    .stTextArea textarea::placeholder, .stTextInput input::placeholder {
+        color: #6c757d !important;
+    }
     </style>
 """, unsafe_allow_html=True)
-
-st.markdown("""
-<style>
-.stApp {
-    background:
-        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.35), transparent 30%),
-        radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.30), transparent 30%),
-        linear-gradient(135deg, #0f172a, #1e1b4b, #111827);
-    color: white;
-}
-.block-container {
-    max-width: 900px;
-    padding-top: 2rem;
-    padding-bottom: 3rem;
-}
-.main-title {
-    text-align: center;
-    font-size: 48px;
-    font-weight: 800;
-    background: linear-gradient(90deg, #60a5fa, #c084fc, #f472b6);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 5px;
-}
-.subtitle {
-    text-align: center;
-    font-size: 18px;
-    color: #cbd5e1;
-    margin-bottom: 30px;
-}
-.glass-card {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 22px;
-    padding: 28px;
-    margin: 20px 0;
-    backdrop-filter: blur(15px);
-    box-shadow: 0 10px 35px rgba(0,0,0,0.30);
-}
-.section-title {
-    font-size: 25px;
-    font-weight: 700;
-    color: #f8fafc;
-    margin-bottom: 15px;
-}
-.stButton > button {
-    width: 100%;
-    border-radius: 14px;
-    border: none;
-    padding: 12px 20px;
-    font-size: 17px;
-    font-weight: 700;
-    color: white;
-    background: linear-gradient(90deg, #6366f1, #8b5cf6);
-    box-shadow: 0 6px 20px rgba(99,102,241,0.35);
-    transition: all 0.3s ease;
-}
-.stButton > button:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 30px rgba(139,92,246,0.55);
-}
-.stRadio > div {
-    background: rgba(255,255,255,0.06);
-    padding: 15px;
-    border-radius: 15px;
-}
-.result-box {
-    background: rgba(255,255,255,0.08);
-    border-radius: 18px;
-    padding: 20px;
-    margin-top: 15px;
-    border: 1px solid rgba(255,255,255,0.12);
-}
-.positive {
-    color: #4ade80;
-    font-size: 30px;
-    font-weight: 800;
-}
-.negative {
-    color: #fb7185;
-    font-size: 30px;
-    font-weight: 800;
-}
-.footer {
-    text-align: center;
-    color: #94a3b8;
-    margin-top: 40px;
-    font-size: 14px;
-}
-
-/* --- Added rules for Text Input and Text Area --- */
-.stTextArea textarea, .stTextInput input {
-    color: #000000 !important;
-    background-color: #ffffff !important;
-    font-size: 16px !important;
-}
-
-.stTextArea textarea::placeholder, .stTextInput input::placeholder {
-    color: #6c757d !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-
-    
 
 # =====================================================
 # TITLE
@@ -209,7 +123,7 @@ def load_artifacts():
         vectorizer = joblib.load("tfidf_vectorizer.pkl")
         return model, vectorizer
     except FileNotFoundError:
-        st.error("Model files not found! Please ensure 'twitter_sentiment_model.pkl' and 'tfidf_vectorizer.pkl' are in the same folder.")
+        st.error("Model files not found! Please ensure 'twitter_sentiment_model.pkl' and 'tfidf_vectorizer.pkl' are in your repository.")
         st.stop()
 
 with st.spinner("🤖 Loading Custom Twitter Model..."):
@@ -232,20 +146,16 @@ def clean_tweet(text):
 # SENTIMENT DISPLAY FUNCTION
 # =====================================================
 def show_sentiment(text):
-    # 1. Clean & Vectorize
     cleaned_text = clean_tweet(text)
     vectorized_input = vectorizer.transform([cleaned_text])
     
-    # 2. Predict
     prediction = model.predict(vectorized_input)[0]
     
-    # 3. Get Confidence Score
     confidence = 0.0
     if hasattr(model, "predict_proba"):
         probabilities = model.predict_proba(vectorized_input)[0]
         confidence = probabilities[prediction] * 100
 
-    # 4. Display Results
     st.markdown('<div class="result-box">', unsafe_allow_html=True)
     st.markdown("### 🎯 Sentiment Result")
 
@@ -284,7 +194,6 @@ def convert_speech_to_text(audio_path):
 # OPTION CARD
 # =====================================================
 st.subheader("🎯 Choose Input Method")
-# Using label_visibility="collapsed" removes the extra empty box above the radio buttons
 option = st.radio(
     "Select an option:", 
     ["🎤 Talk", "📁 Upload Audio", "⌨️ Type Text"], 
@@ -292,7 +201,7 @@ option = st.radio(
     label_visibility="collapsed"
 )
 
-st.divider() # Adds a clean line to separate the menu from the tool
+st.divider()
 
 # =====================================================
 # INPUT LOGIC
@@ -307,7 +216,6 @@ if option == "🎤 Talk":
         st.success("✅ Recording completed!")
         audio_bytes = audio_value.getvalue()
         
-        # Don't show the duplicate native audio player since the input widget already has one
         with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
             temp_file.write(audio_bytes)
             audio_path = temp_file.name
@@ -357,7 +265,6 @@ elif option == "📁 Upload Audio":
                 show_sentiment(text)
 
 else:
-    # "⌨️ Type Text" Option
     st.subheader("⌨️ Type or Paste Text")
     st.write("Paste a tweet or sentence to analyze its sentiment instantly.")
     
