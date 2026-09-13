@@ -9,6 +9,43 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
 
+import os
+import pickle
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression  # Or whichever model you used
+
+@st.cache_resource
+def load_or_train_models():
+    model_path = "twitter_sentiment_model.pkl"
+    vectorizer_path = "tfidf_vectorizer.pkl"
+    
+    # If model files already exist, load them normally
+    if os.path.exists(model_path) and os.path.exists(vectorizer_path):
+        with open(model_path, "rb") as f:
+            model = pickle.load(f)
+        with open(vectorizer_path, "rb") as f:
+            vectorizer = pickle.load(f)
+        return model, vectorizer
+    
+    # Otherwise, train them automatically from twitter.csv on the fly!
+    df = pd.read_csv("twitter.csv")
+    # (Insert your preprocessing and training columns here matching your Jupyter notebook)
+    # Example placeholder:
+    # X = df['text_column']
+    # y = df['sentiment_column']
+    # vectorizer = TfidfVectorizer()
+    # X_vec = vectorizer.fit_transform(X)
+    # model = LogisticRegression()
+    # model.fit(X_vec, y)
+    
+    return model, vectorizer
+
+model, vectorizer = load_or_train_models()
+
+
+
+
 # =====================================================
 # PAGE CONFIGURATION
 # =====================================================
